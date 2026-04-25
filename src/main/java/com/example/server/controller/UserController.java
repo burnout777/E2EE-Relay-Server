@@ -4,9 +4,11 @@ import com.example.server.dto.KeyBundle;
 import com.example.server.dto.RotationRequest;
 import com.example.server.model.PreKey;
 import com.example.server.model.User;
+import com.example.server.repository.UserRepository;
 import com.example.server.service.KeyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.security.Principal;
 
 import java.util.List;
 
@@ -15,9 +17,19 @@ import java.util.List;
 public class UserController {
 
     private final KeyService keyService;
+    private final UserRepository userRepository;
 
-    public UserController(KeyService keyService) {
+    public UserController(KeyService keyService, UserRepository userRepository) {
         this.keyService = keyService;
+        this.userRepository = userRepository;
+    }
+
+    @GetMapping("/availability/{username}")
+    public ResponseEntity<String> checkUsernameAvailability(@PathVariable String username) {
+        if (keyService.userExists(username)) {
+            return ResponseEntity.status(409).body("TAKEN");
+        }
+        return ResponseEntity.ok("AVAILABLE");
     }
 
     @PostMapping("/register")
@@ -56,7 +68,11 @@ public class UserController {
     }
 
     @PostMapping("/keys/rotate")
-    public ResponseEntity<String> rotateKey(@RequestBody RotationRequest req) {
+    public ResponseEntity<String> rotateKey(@RequestBody RotationRequest req, Principal principal) {
+        if (!principal.getName().equals(req.username())) {
+            return ResponseEntity.status(403).body("You can only rotate your own keys.");
+        }
+
         keyService.rotateIdentityKey(
                 req.username(),
                 req.newKey(),
@@ -72,5 +88,11 @@ public class UserController {
         return keyService.isLedgerSecure() ?
                 ResponseEntity.ok("Audit: PASSED.") :
                 ResponseEntity.status(409).body("Audit: FAILED.");
+    }
+
+    @GetMapping("/{username}/lastrotation")
+    public ResponseEntity<String> getLastRotation(@PathVariable String username) {
+        return ResponseEntity.ok(keyService.getLastRotation(username));
+
     }
 }

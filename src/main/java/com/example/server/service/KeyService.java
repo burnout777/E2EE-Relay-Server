@@ -108,6 +108,12 @@ public class KeyService {
         return (int) preKeyRepository.countByUsername(username);
     }
 
+    public String getLastRotation(String username) {
+        LocalDateTime lastRotationLocalDateTime = userRepository.getLastRotation(username);
+        long lastRotationMillis = lastRotationLocalDateTime.toEpochSecond(ZoneOffset.UTC);
+        return String.valueOf(lastRotationMillis);
+    }
+
     public boolean isLedgerSecure() {
         return chainJ.isValidChain();
     }
